@@ -43,7 +43,10 @@ button,input,select {font:inherit}
 .resources {display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:22px}
 .resource {border:1px solid #d1d9e9;border-radius:999px;min-height:41px;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:9px 17px;font:600 13px/1.4 var(--sans);color:#24385f;text-decoration:none;background:white}
 .resource-mark {display:block;flex:none;object-fit:contain}
-.resource:hover {background:#f4f6ff;border-color:#9cadd8}
+.arxiv-resource:not([href]) {background:#f6f7fa;color:#5e6980;border-style:dashed;cursor:default}
+.arxiv-resource .availability {font-size:.88em;font-weight:400}
+.arxiv-resource[href] .availability {display:none}
+.resource[href]:hover {background:#f4f6ff;border-color:#9cadd8}
 .resource.primary {background:var(--blue);border-color:var(--blue);color:white}
 .resource.primary:hover {background:#203da1}
 .book {position:relative;width:13px;height:15px;border:1.3px solid currentColor;border-radius:2px}
@@ -83,9 +86,9 @@ button,input,select {font:inherit}
 .coverage-bar i {background:var(--blue)}
 .coverage-bar i+i {background:#adbee9}
 .coverage-key {display:flex;justify-content:space-between;gap:12px;color:var(--body);font-size:13px}
-.coverage-details {display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:20px;padding-top:23px;border-top:1px solid var(--line)}
+.coverage-details {display:grid;grid-template-columns:1fr 1fr minmax(max-content,1.5fr);gap:20px;padding-top:23px;border-top:1px solid var(--line)}
 .coverage-details dd {font:555 34px/1.25 var(--sans);letter-spacing:-.045em;color:var(--ink)}
-.coverage-details dt {font-size:14px;color:var(--muted);max-width:26ch;line-height:1.45}
+.coverage-details dt {font-size:14px;color:var(--muted);line-height:1.45}
 @media(max-width:800px){
   .curriculum {gap:14px}
   .curriculum h3 {font-size:20px}
@@ -108,7 +111,8 @@ button,input,select {font:inherit}
   .coverage-key>span {display:inline-flex;align-items:center;gap:4px}
   .coverage-key>span::before {content:"";width:6px;height:6px;border-radius:100%;background:var(--blue)}
   .coverage-key>span+span::before {background:#adbee9}
-  .coverage-details {gap:12px;grid-template-columns:.94fr .78fr 1.35fr}
+  .coverage-details {gap:16px 12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .coverage-details>div:last-child {grid-column:1/-1}
   .coverage-details dt {font-size:12px}
 }
 .site-footer {background:white;border-top:1px solid var(--line);padding:24px 0}
@@ -140,7 +144,11 @@ button,input,select {font:inherit}
   .figure-banner {font-size:12px}
 }
 .project-intro {max-width:650px;margin:17px auto 0;color:var(--muted);font-size:clamp(15px,1.4vw,18px);line-height:1.55;text-wrap:balance}
-@media(max-width:450px){.resources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:300px;margin-inline:auto;gap:8px}.project-intro{max-width:35ch}}
+@media(max-width:450px){
+  .resources {max-width:300px;margin-inline:auto;gap:8px}
+  .resources .resource {flex:0 1 calc((100% - 8px) / 2);padding-inline:8px}
+  .project-intro {max-width:35ch}
+}
 
 .site-footer .footer-inner {align-items:flex-start}
 .footer-contact,.footer-credit {display:grid;gap:3px}
