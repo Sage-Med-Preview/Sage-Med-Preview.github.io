@@ -24,6 +24,7 @@
 .lb-intro {display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: clamp(40px,4.5vw,76px) 0 clamp(30px,3.3vw,60px); border-bottom: 1px solid var(--lb-line);}
 .lb-intro h1 {font: 600 clamp(3.2rem,5.3vw,5rem)/1.05 var(--sans,"Inter","Helvetica Neue",Arial,sans-serif); color: var(--lb-ink); letter-spacing: -.065em;}
 .lb-intro p {color: var(--lb-muted); margin-top: 22px; font-size: 15px; line-height: 1.8;}
+.lb-responses {margin-top: 12px;}
 .lb-totals {display: flex; align-items: stretch; gap: clamp(28px,3.6vw,65px); padding: 0 0 4px;}
 .lb-totals div {display: grid; align-content: start; row-gap: 5px; padding-left: clamp(18px,2.1vw,36px); border-left: 1px solid var(--lb-line); white-space: nowrap;}
 .lb-totals dd {display: contents;}
@@ -41,6 +42,26 @@
 .lb-search input {width: 100%; height: 100%; border: 0; padding: 0; background: transparent; color: var(--lb-text); font-size: 13px;}
 .lb-search input::placeholder {color: #60708a;}
 .lb-search input:focus-visible {outline: 0;}
+.lb-finder {position: relative; min-width: 0;}
+.lb-finder .lb-search {padding-right: 3px; gap: 8px;}
+.lb-finder input {flex: 1; width: 0; min-width: 0;}
+.lb-browse-toggle {display: grid; place-items: center; align-self: stretch; width: 28px; flex: none; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--lb-muted);}
+.lb-browse-toggle::after,.lb-browse-scope::after,.lb-browse-back::before {content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0;}
+.lb-browse-toggle::after {transform: rotate(45deg);}
+.lb-browse-toggle[aria-expanded="true"]::after {transform: rotate(225deg);}
+#bench-menu {position: absolute; left: 0; top: calc(100% + 5px); z-index: 8; width: min(310px, calc(100vw - 48px)); padding: 5px; background: white; border: 1px solid var(--lb-line); border-radius: 7px; box-shadow: 0 7px 24px #16294820; color: var(--lb-ink);}
+#bench-menu button {display: flex; align-items: center; gap: 8px; width: 100%; min-height: 37px; padding: 8px 10px; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 13px; line-height: 1.4; text-align: left;}
+#bench-menu button:hover,#bench-menu button:focus-visible,.lb-browse-toggle:hover {background: #eff4fc;}
+#bench-menu button:focus-visible {outline-offset: -2px;}
+.lb-browse-scope {justify-content: space-between; font-weight: 600;}
+.lb-browse-scope::after {transform: rotate(-45deg);}
+#bench-menu .lb-browse-back {border-bottom: 1px solid var(--lb-line); border-radius: 0; font-weight: 650;}
+.lb-browse-back::before {transform: rotate(135deg);}
+.lb-browse-list {max-height: min(320px, 42vh); max-height: min(320px, 42dvh); overflow: auto; overscroll-behavior: contain;}
+#bench-menu h3 {padding: 9px 10px 3px; color: var(--lb-muted); font-size: 11px; font-weight: 600;}
+#bench-menu .lb-browse-option {flex-wrap: wrap; column-gap: 8px; row-gap: 0;}
+.lb-browse-option small {color: var(--lb-muted); font-size: 11px;}
+#bench-menu .lb-browse-option[aria-current] {color: var(--lb-accent); font-weight: 650;}
 .lb-list-section {margin-top: 26px;}
 .lb-list-section h3 {font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--lb-muted); margin-bottom: 7px;}
 .lb-item {display: flex; align-items: center; position: relative; padding: 8px 11px; border-radius: 4px; font-size: 13px; line-height: 1.55; text-decoration: none; margin: 2px 0;}
@@ -107,7 +128,8 @@
 @media(max-width:570px){
   
   .lb-intro {display: block; padding: 35px 0 24px;}
-  .lb-intro p {margin: 12px 0 19px; max-width: 30em; font-size: 13px;}
+  .lb-intro p {margin: 12px 0 0; max-width: 30em; font-size: 13px;}
+  .lb-responses {margin-bottom: 20px;}
   .lb-totals {gap: 32px; padding: 0;}
   .lb-totals div {row-gap: 3px; padding: 0; border: 0;}
   .lb-total-value {font-size: 25px;}
@@ -224,3 +246,4 @@
   .is-expanded .lb-model-label {display: flex; align-items: baseline; gap: 5px;}
   .is-expanded .lb-table thead th button {padding: 4px 8px;}
 }
+.lb-table .lb-reference > :is(th,td) {border-top: 2px solid #aabbd9;}

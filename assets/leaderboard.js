@@ -12,9 +12,15 @@
   }
 
   const state = { table: tables[0], metric: 0, direction: "desc" };
-  const numberFormat = new Intl.NumberFormat("en-US");
   const folded = value => String(value ?? "").toLowerCase().normalize("NFKC").replace(/[\s\-–_./]/g, "");
   const scopes = {public: "Public benchmarks", private: "Private benchmarks"};
+  const benchInput = id("bench-search");
+  const benchMenu = id("bench-menu");
+  const benchmarks = tables.flatMap(table =>
+    [...new Set(table.columns.map(column => column.benchmark))].map(name => ({name, table}))
+  ).sort((a, b) => a.name.localeCompare(b.name, "en", {numeric: true}));
+  let selectedBenchmark = null;
+  let browseScope = null;
   const node = (tag, value, className) => {
     const element = document.createElement(tag);
     if (value != null) element.textContent = value;
@@ -28,10 +34,91 @@
     return [column.benchmark, column.metric].filter(Boolean).join(" · ");
   }
   function viewColumns(table) {
-    const term = folded(id("bench-search").value);
+    const indexed = table.columns.map((column, index) => ({...column, index}));
+    if (selectedBenchmark) {
+      return table === selectedBenchmark.table ? indexed.filter(col => col.benchmark === selectedBenchmark.name) : [];
+    }
+    const term = folded(benchInput.value);
     const tableMatch = folded([table.title, scopes[table.scope]].join(" ")).includes(term);
-    return table.columns.map((column, index) => ({...column, index})).filter(column =>
+    return indexed.filter(column =>
       tableMatch || folded([column.benchmark, column.metric, column.category].join(" ")).includes(term));
+  }
+  function menuButton(label, className, action) {
+    const button = node("button", label, className);
+    button.type = "button";
+    button.addEventListener("click", action);
+    return button;
+  }
+  function renderBenchMenu() {
+    const fragment = document.createDocumentFragment();
+    const searching = !selectedBenchmark && Boolean(benchInput.value.trim());
+    if (!searching && !browseScope) {
+      for (const [scope, title] of Object.entries(scopes)) {
+        const button = menuButton(title, "lb-browse-scope", () => {
+          browseScope = scope;
+          renderBenchMenu();
+          benchMenu.querySelector("button").focus({preventScroll: true});
+        });
+        button.dataset.scope = scope;
+        fragment.append(button);
+      }
+    } else {
+      if (browseScope) {
+        const back = menuButton(scopes[browseScope], "lb-browse-back", () => {
+          const previous = browseScope;
+          browseScope = null;
+          renderBenchMenu();
+          benchMenu.querySelector('[data-scope="' + previous + '"]').focus({preventScroll: true});
+        });
+        back.setAttribute("aria-label", "Back to benchmark groups");
+        fragment.append(back);
+      }
+      const list = node("div", null, "lb-browse-list");
+      const matches = searching ? new Map(tables.map(table =>
+        [table, new Set(viewColumns(table).map(column => column.benchmark))]
+      )) : null;
+      for (const [scope, title] of Object.entries(scopes)) {
+        if (browseScope && scope !== browseScope) continue;
+        const entries = benchmarks.filter(entry => entry.table.scope === scope && (!matches || matches.get(entry.table).has(entry.name)));
+        if (searching && entries.length) list.append(node("h3", title));
+        for (const entry of entries) {
+          const button = menuButton(entry.name, "lb-browse-option", () => {
+            selectedBenchmark = entry;
+            benchInput.value = entry.name;
+            closeBenchMenu(true);
+            selectView(entry.table);
+          });
+          if (benchmarks.some(other => other !== entry && other.table.scope === scope && other.name === entry.name)) {
+            const context = entry.table.title.replace(/^(?:Public|Private)\s+/i, "").split(" · ")[0];
+            button.append(node("small", context[0].toUpperCase() + context.slice(1)));
+          }
+          if (entry === selectedBenchmark) button.setAttribute("aria-current", "true");
+          list.append(button);
+        }
+      }
+      if (!list.childElementCount) {
+        benchMenu.replaceChildren();
+        closeBenchMenu();
+        return false;
+      }
+      fragment.append(list);
+    }
+    benchMenu.replaceChildren(fragment);
+    return true;
+  }
+  function openBenchMenu() {
+    if (!benchMenu.hidden) return;
+    browseScope = null;
+    if (!renderBenchMenu()) return;
+    benchMenu.hidden = false;
+    benchInput.setAttribute("aria-expanded", "true");
+    id("bench-toggle").setAttribute("aria-expanded", "true");
+  }
+  function closeBenchMenu(restoreFocus = false) {
+    if (restoreFocus) benchInput.focus({preventScroll: true});
+    benchMenu.hidden = true;
+    benchInput.setAttribute("aria-expanded", "false");
+    id("bench-toggle").setAttribute("aria-expanded", "false");
   }
   function setView(table) {
     state.table = table;
@@ -50,7 +137,7 @@
     const mobile = id("view-picker");
     groups.replaceChildren();
     mobile.replaceChildren();
-    const available = tables.filter(table => viewColumns(table).length);
+    const available = selectedBenchmark ? tables : tables.filter(table => viewColumns(table).length);
     id("view-panel").hidden = !available.length;
     id("no-views").hidden = !!available.length;
     mobile.disabled = !available.length;
@@ -76,7 +163,7 @@
         item.addEventListener("click", event => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
           event.preventDefault();
-          selectView(view);
+          selectWholeView(view);
         });
         section.append(item);
         menu.append(new Option(view.title, view.id));
@@ -85,6 +172,14 @@
       mobile.append(menu);
     });
     mobile.value = state.table.id;
+  }
+  function selectWholeView(view) {
+    if (selectedBenchmark) {
+      selectedBenchmark = null;
+      benchInput.value = "";
+    }
+    closeBenchMenu();
+    selectView(view);
   }
   function selectView(view) {
     setView(view);
@@ -103,7 +198,11 @@
       } catch { return; }
     }
     if (selected && state.table !== selected) {
-      if (!viewColumns(selected).length) id("bench-search").value = "";
+      if (!viewColumns(selected).length) {
+        benchInput.value = "";
+        selectedBenchmark = null;
+        closeBenchMenu();
+      }
       setView(selected);
     }
   }
@@ -162,8 +261,10 @@
     }
     const query = folded(id("model-search").value);
     const family = id("family-select").value;
-    const rows = table.rows.filter(row => (!family || row.family === family) &&
+    const matches = table.rows.filter(row => (!family || row.family === family) &&
       folded(row.model + " " + (row.size || "")).includes(query));
+    const reference = matches.length ? table.rows.find(row => row.model === "Sage-Med-Preview") : null;
+    const rows = matches.filter(row => row !== reference);
     const metric = state.metric;
     const ranked = metric >= 0;
     const ranks = ranked ? getRanks(table.rows, metric, table.columns[metric].direction) : null;
@@ -174,18 +275,21 @@
     });
     id("scope-tag").textContent = scopes[table.scope];
     id("view-title").textContent = table.title;
-    const rowCount = rows.length + (rows.length === 1 ? " model configuration" : " model configurations");
+    let rowCount = rows.length + (rows.length === 1 ? " model configuration" : " model configurations");
+    if (reference) rowCount = rows.length ? rowCount + " + 1 reference" : "1 reference model";
     const metricCount = columns.length + (columns.length === 1 ? " metric" : " metrics");
     id("row-summary").textContent = rowCount + " · " + metricCount;
     id("table-caption").textContent = table.title + ". " +
-      (ranked ? "Sorted by " + colLabel(table.columns[metric]) + (state.direction === "asc" ? ", ascending." : ", descending.") : "Grouped by model family and size.");
+      (ranked ? "Sorted by " + colLabel(table.columns[metric]) + (state.direction === "asc" ? ", ascending." : ", descending.") : "Grouped by model family and size.")
+      + (reference ? " Sage-Med-Preview appears last for comparison." : "");
     id("order-reset").disabled = !ranked;
-    id("no-models").hidden = rows.length > 0;
+    id("no-models").hidden = matches.length > 0;
     drawHead(columns);
     const fragment = document.createDocumentFragment();
     let lastGroup = null;
+    if (reference) rows.push(reference);
     rows.forEach(row => {
-      if (!ranked && modelGroup(row) !== lastGroup) {
+      if (!ranked && row !== reference && modelGroup(row) !== lastGroup) {
         lastGroup = modelGroup(row);
         const tr = node("tr", null, "lb-group");
         const cell = node("th", lastGroup);
@@ -193,7 +297,8 @@
         tr.append(cell);
         fragment.append(tr);
       }
-      const tr = node("tr", null, /sage[ -]?med/i.test(row.model) ? "lb-ours" : "");
+      const tr = node("tr", null, row.model === "Sage-Med-Preview" ? "lb-ours" : "");
+      if (row === reference) tr.classList.add("lb-reference");
       const model = node("th", null, "lb-sticky");
       model.scope = "row";
       const line = node("div", null, "lb-model-cell");
@@ -205,7 +310,8 @@
         line.append(prefix);
       }
       const label = node("span", null, "lb-model-label");
-      label.append(node("b", row.model), node("small", row.size || "Size unreported"));
+      const detail = (row.size || "Size unreported") + (row === reference ? " · Reference" : "");
+      label.append(node("b", row.model), node("small", detail));
       line.append(label);
       model.append(line);
       tr.append(model);
@@ -230,17 +336,64 @@
     }
   }
   id("model-total").textContent = comparisonModels.size;
-  id("score-total").textContent = numberFormat.format(tables.reduce((count, table) =>
-    count + table.rows.reduce((n,row) => n + row.values.filter(val => val != null).length, 0), 0));
-  id("view-picker").addEventListener("change", event => selectView(tables.find(table => table.id === event.target.value)));
-  id("bench-search").addEventListener("input", refresh);
+  const benchmarkCounts = Object.keys(scopes).map(scope => ({
+    scope,
+    count: new Set(benchmarks.filter(entry => entry.table.scope === scope).map(entry => entry.name)).size
+  }));
+  id("benchmark-total").textContent = benchmarkCounts.reduce((total, group) => total + group.count, 0);
+  id("benchmark-split").textContent = benchmarkCounts.map(group => group.count + " " + group.scope).join(" · ");
+  id("view-picker").addEventListener("change", event => selectWholeView(tables.find(table => table.id === event.target.value)));
+  benchInput.addEventListener("focus", openBenchMenu);
+  benchInput.addEventListener("click", openBenchMenu);
+  benchInput.addEventListener("input", () => {
+    selectedBenchmark = null;
+    browseScope = null;
+    refresh();
+    if (benchMenu.hidden) openBenchMenu();
+    else renderBenchMenu();
+  });
+  id("bench-toggle").addEventListener("click", () => {
+    if (!benchMenu.hidden) closeBenchMenu(true);
+    else {
+      benchInput.focus({preventScroll: true});
+      openBenchMenu();
+    }
+  });
+  const finder = id("bench-finder");
+  finder.addEventListener("focusout", event => {
+    if (event.relatedTarget && !finder.contains(event.relatedTarget)) closeBenchMenu();
+  });
+  document.addEventListener("pointerdown", event => {
+    if (!finder.contains(event.target) && !benchMenu.hidden) closeBenchMenu();
+  });
+  finder.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !benchMenu.hidden) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeBenchMenu(true);
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openBenchMenu();
+      const buttons = Array.from(benchMenu.querySelectorAll("button"));
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === "ArrowDown" ? Math.min(index + 1, buttons.length - 1) :
+        (index < 0 ? buttons.length - 1 : Math.max(0, index - 1));
+      buttons[next]?.focus();
+    }
+  });
   id("model-search").addEventListener("input", drawTable);
   id("family-select").addEventListener("change", drawTable);
   id("order-reset").addEventListener("click", () => { state.metric = -1; drawTable(); });
   id("clear-models").addEventListener("click", () => {
     id("model-search").value = ""; id("family-select").value = ""; drawTable(); id("model-search").focus();
   });
-  id("clear-bench").addEventListener("click", () => { id("bench-search").value = ""; refresh(); id("bench-search").focus(); });
+  id("clear-bench").addEventListener("click", () => {
+    benchInput.value = "";
+    selectedBenchmark = null;
+    closeBenchMenu();
+    refresh();
+    benchInput.focus();
+  });
   addEventListener("hashchange", () => { fromLocation(); refresh(); });
   const board = id("board");
   const screenToggle = id("toggle-screen");
