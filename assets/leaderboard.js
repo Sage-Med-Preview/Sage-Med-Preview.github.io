@@ -21,6 +21,10 @@
   ).sort((a, b) => a.name.localeCompare(b.name, "en", {numeric: true}));
   let selectedBenchmark = null;
   let browseScope = null;
+  const modelInput = id("model-search");
+  const modelMenu = id("model-menu");
+  let modelSelection = null;
+  let browseFamily = null;
   const node = (tag, value, className) => {
     const element = document.createElement(tag);
     if (value != null) element.textContent = value;
@@ -106,19 +110,147 @@
     benchMenu.replaceChildren(fragment);
     return true;
   }
-  function openBenchMenu() {
-    if (!benchMenu.hidden) return;
-    browseScope = null;
-    if (!renderBenchMenu()) return;
-    benchMenu.hidden = false;
-    benchInput.setAttribute("aria-expanded", "true");
-    id("bench-toggle").setAttribute("aria-expanded", "true");
+  function bindPicker(prefix, renderMenu, resetBrowse, onInput) {
+    const finder = id(prefix + "-finder");
+    const input = id(prefix + "-search");
+    const menu = id(prefix + "-menu");
+    const toggle = id(prefix + "-toggle");
+    function show(visible) {
+      menu.hidden = !visible;
+      input.setAttribute("aria-expanded", String(visible));
+      toggle.setAttribute("aria-expanded", String(visible));
+    }
+    function open() {
+      if (!menu.hidden) return;
+      resetBrowse();
+      if (renderMenu()) show(true);
+    }
+    function close(restoreFocus = false) {
+      if (restoreFocus) input.focus({preventScroll: true});
+      show(false);
+    }
+    input.addEventListener("focus", open);
+    input.addEventListener("click", open);
+    input.addEventListener("input", () => {
+      resetBrowse();
+      onInput();
+      show(renderMenu());
+    });
+    toggle.addEventListener("click", () => {
+      if (!menu.hidden) close(true);
+      else {
+        input.focus({preventScroll: true});
+        open();
+      }
+    });
+    finder.addEventListener("focusout", event => {
+      if (event.relatedTarget && !finder.contains(event.relatedTarget)) close();
+    });
+    document.addEventListener("pointerdown", event => {
+      if (!menu.hidden && !finder.contains(event.target)) close();
+    });
+    finder.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !menu.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        close(true);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        open();
+        const buttons = Array.from(menu.querySelectorAll("button"));
+        const index = buttons.indexOf(document.activeElement);
+        const next = event.key === "ArrowDown" ? Math.min(index + 1, buttons.length - 1) :
+          (index < 0 ? buttons.length - 1 : Math.max(0, index - 1));
+        if (!menu.hidden) buttons[next]?.focus();
+      }
+    });
+    return {close};
   }
   function closeBenchMenu(restoreFocus = false) {
-    if (restoreFocus) benchInput.focus({preventScroll: true});
-    benchMenu.hidden = true;
-    benchInput.setAttribute("aria-expanded", "false");
-    id("bench-toggle").setAttribute("aria-expanded", "false");
+    benchPicker.close(restoreFocus);
+  }
+  function modelLabel(row) {
+    return row.model + " · " + (row.size || "Size unreported");
+  }
+  function modelMatches(row) {
+    if (modelSelection) {
+      return row.family === modelSelection.family && (!modelSelection.model ||
+        (row.model === modelSelection.model && row.size === modelSelection.size));
+    }
+    const words = modelInput.value.trim().split(/[\s·]+/);
+    const searchable = folded([row.model, row.size || "Size unreported", row.family].join(" "));
+    return words.every(word => searchable.includes(folded(word)));
+  }
+  function chooseModel(selection) {
+    modelSelection = selection;
+    modelInput.value = !selection ? "" : selection.model ? modelLabel(selection) : selection.family;
+    modelPicker.close(true);
+    drawTable();
+  }
+  function positionModelMenu() {
+    const rect = id("model-finder").getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const top = viewport?.offsetTop || 0;
+    const bottom = top + (viewport?.height || window.innerHeight);
+    const below = bottom - rect.bottom;
+    modelMenu.dataset.placement = below < 200 && rect.top - top > below ? "above" : "below";
+  }
+  function renderModelMenu() {
+    positionModelMenu();
+    const fragment = document.createDocumentFragment();
+    const searching = !modelSelection && Boolean(modelInput.value.trim());
+    const candidates = searching ? state.table.rows.filter(modelMatches) : state.table.rows;
+    if (!candidates.length) {
+      modelMenu.replaceChildren();
+      return false;
+    }
+    const families = [...new Set(candidates.map(row => row.family))];
+    if (!browseFamily && !searching) {
+      const all = menuButton("All models", "lb-browse-option", () => chooseModel(null));
+      if (!modelSelection && !searching) all.setAttribute("aria-current", "true");
+      fragment.append(all);
+    } else if (browseFamily) {
+      const back = menuButton(browseFamily, "lb-browse-back", () => {
+        const previous = browseFamily;
+        browseFamily = null;
+        renderModelMenu();
+        [...modelMenu.querySelectorAll("[data-family]")].find(item => item.dataset.family === previous)?.focus({preventScroll:true});
+      });
+      back.setAttribute("aria-label", "Back to model families");
+      const currentFamily = browseFamily;
+      const all = menuButton("All models in this family", "lb-browse-option", () => chooseModel({family:currentFamily}));
+      if (modelSelection?.family === currentFamily && !modelSelection.model) all.setAttribute("aria-current", "true");
+      fragment.append(back, all);
+    }
+    const list = node("div", null, "lb-browse-list");
+    for (const family of families) {
+      if (browseFamily && family !== browseFamily) continue;
+      if (!browseFamily && !searching) {
+        const button = menuButton(family, "lb-browse-scope", () => {
+          browseFamily = family;
+          renderModelMenu();
+          modelMenu.querySelector("button").focus({preventScroll:true});
+        });
+        button.dataset.family = family;
+        list.append(button);
+        continue;
+      }
+      if (searching) list.append(node("h3", family));
+      const models = candidates.filter(row => row.family === family).sort((a,b) =>
+        modelLabel(a).localeCompare(modelLabel(b), "en", {numeric:true}));
+      for (const row of models) {
+        const button = menuButton(row.model, "lb-browse-option", () => chooseModel(row));
+        button.append(node("small", row.size || "Size unreported"));
+        button.setAttribute("aria-label", modelLabel(row));
+        button.dataset.model = row.model;
+        button.dataset.size = row.size || "";
+        if (modelSelection?.model && modelMatches(row)) button.setAttribute("aria-current", "true");
+        list.append(button);
+      }
+    }
+    fragment.append(list);
+    modelMenu.replaceChildren(fragment);
+    return true;
   }
   function setView(table) {
     state.table = table;
@@ -126,11 +258,11 @@
     const first = viewColumns(table)[0];
     state.metric = first?.index ?? 0;
     state.direction = first?.direction ?? "desc";
-    const family = id("family-select").value;
-    const select = id("family-select");
-    const families = [...new Set(table.rows.map(row => row.family).filter(Boolean))];
-    select.replaceChildren(new Option("All model families", ""), ...families.map(value => new Option(value, value)));
-    if (families.includes(family)) select.value = family;
+    modelPicker.close();
+    if (modelSelection && !table.rows.some(modelMatches)) {
+      modelSelection = null;
+      modelInput.value = "";
+    }
   }
   function updateIndex() {
     const groups = id("lb-index");
@@ -259,10 +391,7 @@
       state.metric = columns[0].index;
       state.direction = columns[0].direction;
     }
-    const query = folded(id("model-search").value);
-    const family = id("family-select").value;
-    const matches = table.rows.filter(row => (!family || row.family === family) &&
-      folded(row.model + " " + (row.size || "")).includes(query));
+    const matches = table.rows.filter(modelMatches);
     const reference = matches.length ? table.rows.find(row => row.model === "Sage-Med-Preview") : null;
     const rows = matches.filter(row => row !== reference);
     const metric = state.metric;
@@ -343,49 +472,23 @@
   id("benchmark-total").textContent = benchmarkCounts.reduce((total, group) => total + group.count, 0);
   id("benchmark-split").textContent = benchmarkCounts.map(group => group.count + " " + group.scope).join(" · ");
   id("view-picker").addEventListener("change", event => selectWholeView(tables.find(table => table.id === event.target.value)));
-  benchInput.addEventListener("focus", openBenchMenu);
-  benchInput.addEventListener("click", openBenchMenu);
-  benchInput.addEventListener("input", () => {
+  const benchPicker = bindPicker("bench", renderBenchMenu, () => { browseScope = null; }, () => {
     selectedBenchmark = null;
-    browseScope = null;
     refresh();
-    if (benchMenu.hidden) openBenchMenu();
-    else renderBenchMenu();
   });
-  id("bench-toggle").addEventListener("click", () => {
-    if (!benchMenu.hidden) closeBenchMenu(true);
-    else {
-      benchInput.focus({preventScroll: true});
-      openBenchMenu();
-    }
+  const modelPicker = bindPicker("model", renderModelMenu, () => { browseFamily = null; }, () => {
+    modelSelection = null;
+    drawTable();
   });
-  const finder = id("bench-finder");
-  finder.addEventListener("focusout", event => {
-    if (event.relatedTarget && !finder.contains(event.relatedTarget)) closeBenchMenu();
-  });
-  document.addEventListener("pointerdown", event => {
-    if (!finder.contains(event.target) && !benchMenu.hidden) closeBenchMenu();
-  });
-  finder.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !benchMenu.hidden) {
-      event.preventDefault();
-      event.stopPropagation();
-      closeBenchMenu(true);
-    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      openBenchMenu();
-      const buttons = Array.from(benchMenu.querySelectorAll("button"));
-      const index = buttons.indexOf(document.activeElement);
-      const next = event.key === "ArrowDown" ? Math.min(index + 1, buttons.length - 1) :
-        (index < 0 ? buttons.length - 1 : Math.max(0, index - 1));
-      buttons[next]?.focus();
-    }
-  });
-  id("model-search").addEventListener("input", drawTable);
-  id("family-select").addEventListener("change", drawTable);
+  const repositionOpenModelMenu = () => {
+    if (!modelMenu.hidden) positionModelMenu();
+  };
+  window.addEventListener("resize", repositionOpenModelMenu);
+  window.visualViewport?.addEventListener("resize", repositionOpenModelMenu);
+  window.visualViewport?.addEventListener("scroll", repositionOpenModelMenu);
   id("order-reset").addEventListener("click", () => { state.metric = -1; drawTable(); });
   id("clear-models").addEventListener("click", () => {
-    id("model-search").value = ""; id("family-select").value = ""; drawTable(); id("model-search").focus();
+    chooseModel(null);
   });
   id("clear-bench").addEventListener("click", () => {
     benchInput.value = "";

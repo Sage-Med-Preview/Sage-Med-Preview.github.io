@@ -49,19 +49,24 @@
 .lb-browse-toggle::after,.lb-browse-scope::after,.lb-browse-back::before {content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0;}
 .lb-browse-toggle::after {transform: rotate(45deg);}
 .lb-browse-toggle[aria-expanded="true"]::after {transform: rotate(225deg);}
-#bench-menu {position: absolute; left: 0; top: calc(100% + 5px); z-index: 8; width: min(310px, calc(100vw - 48px)); padding: 5px; background: white; border: 1px solid var(--lb-line); border-radius: 7px; box-shadow: 0 7px 24px #16294820; color: var(--lb-ink);}
-#bench-menu button {display: flex; align-items: center; gap: 8px; width: 100%; min-height: 37px; padding: 8px 10px; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 13px; line-height: 1.4; text-align: left;}
-#bench-menu button:hover,#bench-menu button:focus-visible,.lb-browse-toggle:hover {background: #eff4fc;}
-#bench-menu button:focus-visible {outline-offset: -2px;}
-.lb-browse-scope {justify-content: space-between; font-weight: 600;}
+.lb-browse-menu {position: absolute; left: 0; top: calc(100% + 5px); z-index: 8; width: min(310px, calc(100vw - 48px)); padding: 5px; background: white; border: 1px solid var(--lb-line); border-radius: 7px; box-shadow: 0 7px 24px #16294820; color: var(--lb-ink);}
+.lb-browse-menu button {display: flex; align-items: center; gap: 8px; width: 100%; min-height: 37px; padding: 8px 10px; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 13px; line-height: 1.4; text-align: left;}
+.lb-browse-menu button:hover,.lb-browse-menu button:focus-visible,.lb-browse-toggle:hover {background: #eff4fc;}
+.lb-browse-menu button:focus-visible {outline-offset: -2px;}
+.lb-browse-menu .lb-browse-scope {justify-content: space-between; font-weight: 600;}
 .lb-browse-scope::after {transform: rotate(-45deg);}
-#bench-menu .lb-browse-back {border-bottom: 1px solid var(--lb-line); border-radius: 0; font-weight: 650;}
+.lb-browse-menu .lb-browse-back {border-bottom: 1px solid var(--lb-line); border-radius: 0; font-weight: 650;}
 .lb-browse-back::before {transform: rotate(135deg);}
 .lb-browse-list {max-height: min(320px, 42vh); max-height: min(320px, 42dvh); overflow: auto; overscroll-behavior: contain;}
-#bench-menu h3 {padding: 9px 10px 3px; color: var(--lb-muted); font-size: 11px; font-weight: 600;}
-#bench-menu .lb-browse-option {flex-wrap: wrap; column-gap: 8px; row-gap: 0;}
+.lb-browse-menu h3 {padding: 9px 10px 3px; color: var(--lb-muted); font-size: 11px; font-weight: 600;}
+.lb-browse-menu .lb-browse-option {flex-wrap: wrap; column-gap: 8px; row-gap: 0;}
 .lb-browse-option small {color: var(--lb-muted); font-size: 11px;}
-#bench-menu .lb-browse-option[aria-current] {color: var(--lb-accent); font-weight: 650;}
+.lb-browse-menu button[aria-current] {color: var(--lb-accent); font-weight: 650;}
+#model-menu {width: max(100%, min(340px, calc(100vw - 48px))); max-height: min(370px, 48vh); max-height: min(370px, 48dvh); overflow-y: auto; overscroll-behavior: contain;}
+#model-menu[data-placement="above"] {top: auto; bottom: calc(100% + 5px);}
+#model-menu .lb-browse-list {max-height: none; overflow: visible;}
+#model-menu .lb-browse-option {overflow-wrap: anywhere;}
+#model-menu .lb-browse-option small {margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums;}
 .lb-list-section {margin-top: 26px;}
 .lb-list-section h3 {font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--lb-muted); margin-bottom: 7px;}
 .lb-item {display: flex; align-items: center; position: relative; padding: 8px 11px; border-radius: 4px; font-size: 13px; line-height: 1.55; text-decoration: none; margin: 2px 0;}
@@ -76,12 +81,11 @@
 .lb-view-head h2 {font-size: clamp(21px,2.2vw,33px); color: var(--lb-ink); font-weight: 600; letter-spacing: -.04em; line-height: 1.3;}
 .lb-controls {display: flex; gap: 9px; margin: 23px 0 17px; align-items: center;}
 .lb-model {flex: 1 1 235px; min-width: 140px; max-width: 380px;}
-.lb-family {flex: 0 1 230px; min-width: 0;}
-.lb-family select,.lb-mobile-picker select,.lb-controls button {height: 42px; padding: 0 11px; background: var(--lb-card); color: var(--lb-text); font-size: 13px; border-radius: 5px; border: 1px solid var(--lb-line);}
-.lb-family select,.lb-mobile-picker select {width: 100%; text-overflow: ellipsis;}
-.lb-controls button {flex: 0 0 auto; margin-left: auto; background: transparent;}
-.lb-controls button:hover:enabled {border-color: var(--lb-muted);}
-.lb-controls button:disabled {opacity: .55; cursor: default;}
+.lb-mobile-picker select,.lb-controls > button {height: 42px; padding: 0 11px; background: var(--lb-card); color: var(--lb-text); font-size: 13px; border-radius: 5px; border: 1px solid var(--lb-line);}
+.lb-mobile-picker select {width: 100%; text-overflow: ellipsis;}
+.lb-controls > button {flex: 0 0 auto; margin-left: auto; background: transparent;}
+.lb-controls > button:hover:enabled {border-color: var(--lb-muted);}
+.lb-controls > button:disabled {opacity: .55; cursor: default;}
 .lb-table-note {display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; line-height: 1.5; margin-bottom: 9px;}
 .lb-spill {overflow: auto; overscroll-behavior-x: contain; max-height: min(80vh,1010px); border: 1px solid var(--lb-line); border-radius: 5px; background: var(--lb-card); position: relative; scrollbar-color: #b4c3d9 #f4f7fb; }
 .lb-table {border-collapse: separate; border-spacing: 0; min-width: 100%; width: max-content; color: var(--lb-text); font-size: 13px; margin: 0; line-height: 1.4; text-align: left;}
@@ -139,9 +143,8 @@
   .lb-sidebar h2 {font-size: 16px;}
   .lb-view-head h2 {font-size: 21px; text-wrap: pretty;}
   .lb-view-head {align-items: start; flex-direction: column; gap: 12px;}
-  .lb-controls {flex-wrap: wrap; gap: 7px; margin-top: 15px;}
-  .lb-model {flex: 1 1 100%; max-width: none;}
-  .lb-family {flex: 1 1 0; min-width: 0;}
+  .lb-controls {gap: 7px; margin-top: 15px;}
+  .lb-model {flex: 1 1 auto; min-width: 0;}
   .lb-table .lb-sticky {min-width: 130px; max-width: 141px;}
   .lb-model-cell {gap: 5px; padding: 7px;}
   .lb-rank {min-width: 15px; font-size: 10px;}
@@ -237,7 +240,7 @@
 @media(max-height:520px) and (min-width:640px){
   .lb-workbench.is-expanded {gap: 6px; padding: 5px 12px;}
   .is-expanded .lb-sidebar h2, .is-expanded .lb-kicker {display: none;}
-  .is-expanded .lb-search, .is-expanded select, .is-expanded .lb-controls button {height: 31px;}
+  .is-expanded .lb-search, .is-expanded select, .is-expanded .lb-controls > button {height: 31px;}
   .is-expanded .lb-fullscreen {min-height: 31px; padding: 5px 9px;}
   .is-expanded .lb-view-head h2 {font-size: 18px;}
   .is-expanded .lb-controls {margin: 4px 0;}
