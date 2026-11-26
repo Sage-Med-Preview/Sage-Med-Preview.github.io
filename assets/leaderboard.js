@@ -410,13 +410,13 @@
     id("row-summary").textContent = rowCount + " · " + metricCount;
     id("table-caption").textContent = table.title + ". " +
       (ranked ? "Sorted by " + colLabel(table.columns[metric]) + (state.direction === "asc" ? ", ascending." : ", descending.") : "Grouped by model family and size.")
-      + (reference ? " Sage-Med-Preview appears last for comparison." : "");
+      + (reference ? " Sage-Med-Preview is pinned first for comparison." : "");
     id("order-reset").disabled = !ranked;
     id("no-models").hidden = matches.length > 0;
     drawHead(columns);
     const fragment = document.createDocumentFragment();
     let lastGroup = null;
-    if (reference) rows.push(reference);
+    if (reference) rows.unshift(reference);
     rows.forEach(row => {
       if (!ranked && row !== reference && modelGroup(row) !== lastGroup) {
         lastGroup = modelGroup(row);
@@ -458,6 +458,12 @@
     id("scores").replaceChildren(fragment);
   }
   function refresh() { updateIndex(); drawTable(); }
+  const tableHead = id("cols");
+  if (window.ResizeObserver) {
+    new ResizeObserver(([entry]) => {
+      tableHead.closest("table").style.setProperty("--lb-header-height", entry.contentRect.height + "px");
+    }).observe(tableHead);
+  }
   const comparisonModels = new Set();
   for (const table of tables) {
     for (const row of table.rows) {

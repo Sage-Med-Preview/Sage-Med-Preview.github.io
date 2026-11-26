@@ -249,4 +249,5 @@
   .is-expanded .lb-model-label {display: flex; align-items: baseline; gap: 5px;}
   .is-expanded .lb-table thead th button {padding: 4px 8px;}
 }
-.lb-table .lb-reference > :is(th,td) {border-top: 2px solid #aabbd9;}
+.lb-table .lb-reference {position: sticky; top: var(--lb-header-height, auto); z-index: 2; background: var(--lb-card);}
+.lb-table .lb-reference > :is(th,td) {border-bottom: 2px solid #aabbd9;}
